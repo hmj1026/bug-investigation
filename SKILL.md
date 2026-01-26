@@ -1,6 +1,6 @@
 ---
 name: bug-investigation
-description: "Systematic 5-phase bug investigation workflow for unexpected behavior, data inconsistencies, and root cause tracing. Use when users ask to investigate/trace bugs or data flow (e.g., bug investigation, 調查 Bug, 追蹤資料流, root cause analysis)."
+description: "Systematic 5-phase bug investigation workflow for unexpected behavior, test failures, performance regressions, data inconsistencies, and root cause tracing. Use when users ask to investigate/trace bugs or data flow (e.g., bug investigation, 測試失敗, 效能異常, 調查 Bug, 追蹤資料流, root cause analysis)."
 ---
 
 # Bug Investigation Skill
@@ -14,9 +14,30 @@ description: "Systematic 5-phase bug investigation workflow for unexpected behav
 4. **修正方案設計** - 提出與評估解決方案並形成決策依據
 5. **知識文件化** - 留存可重用的知識與調查結果
 
+## 核心鐵律
+
+```
+未完成 Phase 1-3（尤其 Phase 3），不得提出修正方案或修改程式碼。
+```
+
 **強制要求**：
 - 所有五個階段必須完成，不可跳過。若受阻，必須記錄原因、缺口與下一步，並在調查文件中標示未完成狀態。
+- 未完成 Phase 1-3 前禁止提出修正方案或改動程式碼。
 - 所有輸出文件與報告以正體中文為主；保留原始 log、程式碼與欄位名稱。
+
+## 紅旗（出現即停止，回到 Phase 1）
+
+- 「先快修再說，之後再查」
+- 「先改幾個地方試試看」
+- 「我不確定但先試」
+- 「先跳過測試，手動驗證就好」
+- 連續修復 2 次仍失敗，準備嘗試第 3 次
+
+## 使用者提示你方向錯了
+
+- 「這樣真的有證據嗎？」
+- 「會不會根本不是那一層？」
+- 「先停一下，不要猜」
 
 ## 知識庫
 
@@ -44,6 +65,12 @@ docs/knowledge/
 
 - `references/scripts.md`：工具安裝與腳本使用說明
 - `references/examples.md`：調查案例與寫作模板
+- `references/root-cause-tracing.md`：根因回溯追蹤技巧
+- `references/defense-in-depth.md`：多層防護驗證模式
+- `references/condition-based-waiting.md`：以條件為基準的等待（解決 flaky 測試）
+- `references/wait-for-helper.ts`：條件等待 helper 範本（可直接複製）
+- `references/phase-templates.md`：各 Phase 文件與 SQL/表格模板
+- `references/checklists.md`：完整檢查清單
 
 ---
 
@@ -61,30 +88,7 @@ docs/knowledge/
 
 ### 1.2 建立調查文件
 
-在 `docs/knowledge/[feature-name]/investigation.md` 建立調查文件：
-
-```bash
-mkdir -p docs/knowledge/[feature-name]
-```
-
-```markdown
-# [問題標題] 調查紀錄
-
-## 問題描述
-- **預期行為**：
-- **實際行為**：
-- **樣本資料**：
-
-## 調查進度
-- [ ] Phase 1: 問題釐清
-- [ ] Phase 2: 證據蒐集
-- [ ] Phase 3: 根因分析
-- [ ] Phase 4: 修正方案設計
-- [ ] Phase 5: 知識文件化
-
-## 阻礙與缺口
-- [ ] [描述阻礙、缺口與下一步]
-```
+在 `docs/knowledge/[feature-name]/investigation.md` 建立調查文件，模板見 `references/phase-templates.md`。
 
 ---
 
@@ -92,30 +96,11 @@ mkdir -p docs/knowledge/[feature-name]
 
 ### 2.1 資料庫驗證
 
-產生 SQL 查詢以驗證問題：
-
-```sql
--- 範本：查詢主要交易
-SELECT * FROM [main_table] WHERE [id] = '[sample_id]';
-
--- 範本：查詢關聯紀錄
-SELECT * FROM [related_table] WHERE [foreign_key] = '[sample_id]';
-
--- 範本：查詢日誌
-SELECT * FROM [log_table] WHERE [reference] = '[sample_id]';
-```
+產生 SQL 查詢以驗證問題，模板見 `references/phase-templates.md`。
 
 ### 2.2 記錄發現
 
-在 `docs/knowledge/[feature-name]/investigation.md` 中記錄資料庫證據：
-
-```markdown
-## 資料庫證據
-
-| 資料表 | 欄位 | 預期 | 實際 | 備註 |
-|--------|------|------|------|------|
-| [table] | [field] | [expected] | [actual] | [note] |
-```
+在 `docs/knowledge/[feature-name]/investigation.md` 中記錄資料庫證據，表格模板見 `references/phase-templates.md`。
 
 ### 2.3 識別矛盾點
 
@@ -123,6 +108,13 @@ SELECT * FROM [log_table] WHERE [reference] = '[sample_id]';
 - [ ] 相關資料表的資料是否匹配？
 - [ ] Log 記錄是否與交易資料一致？
 - [ ] 資料中是否有時序問題？
+
+### 2.4 跨層蒐證（多元件系統）
+
+當流程跨越多層（前端 → API → 背景作業 → DB）時：
+- [ ] 在每一層記錄「輸入」與「輸出」的資料
+- [ ] 檢查設定/環境變數是否正確傳遞
+- [ ] 一次收集證據以定位斷裂的層級
 
 ---
 
@@ -142,7 +134,15 @@ SELECT * FROM [log_table] WHERE [reference] = '[sample_id]';
 4. 資料庫寫入 → [資料表]
 ```
 
-### 3.2 程式碼調查
+需要完整回溯技巧時，參考 `references/root-cause-tracing.md`。
+
+### 3.2 對照可運作範例
+
+- [ ] 找出同專案中相似且正常的流程/程式碼
+- [ ] 完整閱讀，不要略過細節
+- [ ] 列出所有差異（哪怕很小）
+
+### 3.3 程式碼調查
 
 對資料流中的每個步驟：
 
@@ -168,24 +168,15 @@ SELECT * FROM [log_table] WHERE [reference] = '[sample_id]';
    - 什麼條件導致進入錯誤的路徑？
    - 使用 `generate-flow-diagram.sh` 生成流程圖輔助分析
 
-### 3.3 記錄根本原因
+### 3.4 單一假設與最小驗證
 
-更新 `docs/knowledge/[feature-name]/investigation.md`：
+- [ ] 明確寫下單一假設：「我認為 X 是根因，因為 Y」
+- [ ] 設計最小修改或最小檢查來驗證
+- [ ] 驗證失敗就回到 3.1-3.3 重新建立假設
 
-```markdown
-## 根因分析
+### 3.5 記錄根本原因
 
-### 資料流
-[流程圖或逐步說明]
-
-### 問題位置
-- **檔案**： [檔案路徑]
-- **行號**： [行號]
-- **問題**： [問題描述]
-
-### 發生原因
-[觸發問題的條件與原因說明]
-```
+更新 `docs/knowledge/[feature-name]/investigation.md`，模板見 `references/phase-templates.md`。
 
 ---
 
@@ -193,28 +184,7 @@ SELECT * FROM [log_table] WHERE [reference] = '[sample_id]';
 
 ### 4.1 建立修正方案文件（必做）
 
-在 `docs/knowledge/[feature-name]/solution-proposal.md` 記錄修正方案與判斷依據：
-
-```markdown
-# [問題標題] 修正方案
-
-## 方案選項
-| 方案 | 描述 | 優點 | 風險/缺點 | 影響範圍 | 測試需求 |
-|------|------|------|-----------|----------|----------|
-| A | [前端修正] | [...] | [...] | [...] | [...] |
-| B | [後端修正] | [...] | [...] | [...] | [...] |
-| C | [前後端整合] | [...] | [...] | [...] | [...] |
-
-## 判斷依據
-- [引用 Phase 2/3 的證據與限制]
-- [風險、成本、效益、時間與可回滾性]
-
-## 推薦方案
-- [建議方案與理由]
-
-## 後續行動
-- [實作步驟 / 測試 / 佈署與回滾]
-```
+在 `docs/knowledge/[feature-name]/solution-proposal.md` 記錄修正方案與判斷依據，模板見 `references/phase-templates.md`。
 
 ### 4.2 設計解決方案選項
 
@@ -227,7 +197,14 @@ SELECT * FROM [log_table] WHERE [reference] = '[sample_id]';
 - 有什麼風險？
 - 需要什麼測試？
 
-### 4.4 建立 OpenSpec Proposal（如適用）
+### 4.4 建立失敗測試/最小重現（必做）
+
+- [ ] 建立最小可重現案例或自動化測試
+- [ ] 有測試框架時先寫 failing test
+- [ ] 需要完整測試流程時使用 `test-driven-development` 技能
+- [ ] 若是 flaky/timeout，改用 `references/condition-based-waiting.md` 的條件等待
+
+### 4.5 建立 OpenSpec Proposal（如適用）
 
 如果修復需要正式文件化，先參考 `openspec/AGENTS.md` 的格式與流程：
 
@@ -240,6 +217,13 @@ mkdir -p openspec/changes/[YYYY-MM-DD]-[fix-description]
 - `proposal.md` - 問題分析與解決方案
 - `tasks.md` - 實作檢查清單
 - `specs/[capability]/spec.md` - 規格變更
+
+### 4.6 修復連續失敗時的停損
+
+- [ ] 已嘗試修復 2 次仍失敗：回到 Phase 1-3 重新調查
+- [ ] 已嘗試 3 次仍失敗：停止再修，先討論架構/設計問題
+
+修復涉及資料驗證時，採用 `references/defense-in-depth.md` 的多層防護。
 
 ---
 
@@ -257,72 +241,14 @@ ls docs/knowledge/
 ### 5.2 建立功能知識文件
 
 調查完成後，記錄功能邏輯供未來參考：
-
-```bash
-mkdir -p docs/knowledge/[feature-name]
-```
-
-建立以下文件：
-
-#### `data-flow.md`
-```markdown
-# [功能名稱] - 資料流
-
-## 概述
-[功能簡述]
-
-## 資料流圖
-使用者動作 → [前端函式] → [後端 API] → [資料表]
-
-## 關鍵變數
-| 變數 | 位置 | 用途 |
-|------|------|------|
-| `[var]` | [file:line] | [用途說明] |
-```
-
-#### `key-functions.md`
-```markdown
-# [功能名稱] - 關鍵函數
-
-## 前端 (JavaScript)
-| 函數 | 檔案 | 說明 |
-|------|------|------|
-| `[func]()` | [file:line] | [功能說明] |
-
-## 後端 (PHP)
-| 函數 | 檔案 | 說明 |
-|------|------|------|
-| `[func]()` | [file:line] | [功能說明] |
-```
-
-#### `related-tables.md`
-```markdown
-# [功能名稱] - 資料表
-
-## 主要資料表
-| 資料表 | 主鍵欄位 | 用途 |
-|--------|----------|------|
-| `[table]` | `[pk]` | [用途說明] |
-
-## 紀錄表
-| 資料表 | 主鍵欄位 | 用途 |
-|--------|----------|------|
-| `[table]` | `[pk]` | [用途說明] |
-```
+建立以下文件，模板見 `references/phase-templates.md`：
+- `data-flow.md`
+- `key-functions.md`
+- `related-tables.md`
 
 ### 5.3 更新檢查清單
 
-將 Phase 5 加入調查檢查清單：
-
-```markdown
-### Phase 5: 知識文件化
-- [ ] 已檢查現有知識庫
-- [ ] 已建立/更新功能知識文件
-- [ ] 已記錄資料流向
-- [ ] 已列出關鍵函數與檔案位置
-- [ ] 已記錄相關資料表
-- [ ] 已確認 solution-proposal.md 完整
-```
+檢查清單模板見 `references/checklists.md`。
 
 ---
 
@@ -345,43 +271,15 @@ mkdir -p docs/knowledge/[feature-name]
 - **預防未來問題** - 考慮如何避免類似的 bug
 - **完整測試** - 驗證修復不會引入新問題
 
+## 例外處理（仍須完成 Phase 1-5）
+
+若調查確認問題源於外部系統/環境/時序：
+- **清楚記錄證據與限制**
+- **在 Phase 4 設計防護**（重試、timeout、錯誤訊息、監控）
+- **在 Phase 5 留下觀測點**
+
 ---
 
 ## 檢查清單總結
 
-```markdown
-## 調查檢查清單
-
-### Phase 1: 問題釐清
-- [ ] 理解預期與實際行為
-- [ ] 獲取樣本資料 (ID、時間戳記)
-- [ ] 建立調查文件
-- [ ] 記錄阻礙與缺口（如有）
-
-### Phase 2: 證據蒐集
-- [ ] 執行資料庫驗證查詢
-- [ ] 記錄資料表/欄位的差異
-- [ ] 識別資料矛盾
-
-### Phase 3: 根因分析
-- [ ] 描繪完整資料流向
-- [ ] 搜尋關鍵變數 (使用 ripgrep/scripts)
-- [ ] 識別分歧點/問題程式碼
-- [ ] 記錄根本原因
-
-### Phase 4: 修正方案設計
-- [ ] 建立 solution-proposal.md
-- [ ] 提出 2-3 個解決方案選項
-- [ ] 向使用者呈現建議
-- [ ] 實作同意的解決方案
-- [ ] 建立 OpenSpec proposal (如適用)
-- [ ] 透過測試驗證修復
-
-### Phase 5: 知識文件化
-- [ ] 檢查現有知識庫
-- [ ] 建立/更新功能知識文件
-- [ ] 記錄資料流向 (data-flow.md)
-- [ ] 列出關鍵 function 及檔案位置 (key-functions.md)
-- [ ] 記錄相關資料表 (related-tables.md)
-- [ ] 確認 solution-proposal.md 完整
-```
+完整版本請見 `references/checklists.md`。

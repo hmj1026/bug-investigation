@@ -86,6 +86,21 @@ docs/knowledge/[feature-name]/function-analysis.txt
 docs/knowledge/[feature-name]/diagrams/flow.md
 ```
 
+### find-polluter.sh
+
+功能：逐一執行測試，找出造成檔案/狀態污染的測試檔。
+
+用法：
+```bash
+./find-polluter.sh <pollution_path> <test_glob> [test_command...]
+```
+
+範例：
+```bash
+./find-polluter.sh .git 'src/**/*.test.ts'
+./find-polluter.sh tmp/output.json 'tests/**/*.spec.ts' pnpm test
+```
+
 ## 常見使用情境
 
 ### 追蹤資料不一致
