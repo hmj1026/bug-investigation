@@ -5,25 +5,31 @@ description: "Systematic 5-phase bug investigation workflow for unexpected behav
 
 # Bug Investigation Skill
 
-## Overview
+## 概述
 
-A systematic methodology for investigating bugs or feature issues in complex codebases. This skill guides you through:
-1. **Problem Discovery** - Understanding the reported issue
-2. **Evidence Gathering** - Collecting data from database and logs
-3. **Root Cause Analysis** - Tracing data flow to identify the source
-4. **Solution Proposal** - Designing and implementing the fix
-5. **Knowledge Documentation** - Recording findings for future reference
+一套系統化方法，用於調查複雜程式碼中的錯誤與異常行為。此技能包含五個階段：
+1. **問題釐清** - 理解回報的問題與影響範圍
+2. **證據蒐集** - 從資料庫與日誌收集可驗證的證據
+3. **根因分析** - 追蹤資料流找出來源與分歧點
+4. **修正方案設計** - 提出與評估解決方案並形成決策依據
+5. **知識文件化** - 留存可重用的知識與調查結果
 
-## Knowledge Base
+**強制要求**：
+- 所有五個階段必須完成，不可跳過。若受阻，必須記錄原因、缺口與下一步，並在調查文件中標示未完成狀態。
+- 所有輸出文件與報告以正體中文為主；保留原始 log、程式碼與欄位名稱。
+
+## 知識庫
 
 調查過程中獲得的程式功能邏輯文件應同步存放在**專案內部**的知識庫資料夾：
 
 ```
 docs/knowledge/
 ├── [feature-name]/
-│   ├── data-flow.md       # 資料流圖解
-│   ├── key-functions.md   # 關鍵函數說明
-│   └── related-tables.md  # 相關資料表結構
+│   ├── investigation.md      # 調查總表與進度
+│   ├── data-flow.md           # 資料流圖解
+│   ├── key-functions.md       # 關鍵函數說明
+│   ├── related-tables.md      # 相關資料表結構
+│   └── solution-proposal.md   # 修正方案與決策依據
 ```
 
 **好處**：
@@ -34,14 +40,14 @@ docs/knowledge/
 
 **範例參考**：`references/examples.md` 與 `examples/state-inconsistency-example/`。
 
-## References
+## 參考
 
 - `references/scripts.md`：工具安裝與腳本使用說明
 - `references/examples.md`：調查案例與寫作模板
 
 ---
 
-## Phase 1: Problem Discovery
+## Phase 1: 問題釐清
 
 > 提示：首次使用先執行 `./scripts/check-tools.sh`（詳見 `references/scripts.md`）。
 
@@ -62,37 +68,40 @@ mkdir -p docs/knowledge/[feature-name]
 ```
 
 ```markdown
-# [Issue Title] Investigation
+# [問題標題] 調查紀錄
 
-## Problem Statement
-- **Expected**: [Expected behavior]
-- **Actual**: [Actual behavior]
-- **Sample Data**: [Transaction ID, etc.]
+## 問題描述
+- **預期行為**：
+- **實際行為**：
+- **樣本資料**：
 
-## Investigation Progress
-- [ ] Phase 1: Problem Discovery
-- [ ] Phase 2: Evidence Gathering
-- [ ] Phase 3: Root Cause Analysis
-- [ ] Phase 4: Solution Proposal
-- [ ] Phase 5: Knowledge Documentation
+## 調查進度
+- [ ] Phase 1: 問題釐清
+- [ ] Phase 2: 證據蒐集
+- [ ] Phase 3: 根因分析
+- [ ] Phase 4: 修正方案設計
+- [ ] Phase 5: 知識文件化
+
+## 阻礙與缺口
+- [ ] [描述阻礙、缺口與下一步]
 ```
 
 ---
 
-## Phase 2: Evidence Gathering
+## Phase 2: 證據蒐集
 
 ### 2.1 資料庫驗證
 
 產生 SQL 查詢以驗證問題：
 
 ```sql
--- Template: Check main transaction
+-- 範本：查詢主要交易
 SELECT * FROM [main_table] WHERE [id] = '[sample_id]';
 
--- Template: Check related records
+-- 範本：查詢關聯紀錄
 SELECT * FROM [related_table] WHERE [foreign_key] = '[sample_id]';
 
--- Template: Check logs
+-- 範本：查詢日誌
 SELECT * FROM [log_table] WHERE [reference] = '[sample_id]';
 ```
 
@@ -101,11 +110,11 @@ SELECT * FROM [log_table] WHERE [reference] = '[sample_id]';
 在 `docs/knowledge/[feature-name]/investigation.md` 中記錄資料庫證據：
 
 ```markdown
-## Database Evidence
+## 資料庫證據
 
-| Table | Field | Expected | Actual |
-|-------|-------|----------|--------|
-| [table] | [field] | [expected] | [actual] |
+| 資料表 | 欄位 | 預期 | 實際 | 備註 |
+|--------|------|------|------|------|
+| [table] | [field] | [expected] | [actual] | [note] |
 ```
 
 ### 2.3 識別矛盾點
@@ -117,27 +126,27 @@ SELECT * FROM [log_table] WHERE [reference] = '[sample_id]';
 
 ---
 
-## Phase 3: Root Cause Analysis
+## Phase 3: 根因分析
 
 ### 3.1 追蹤資料流向
 
 描繪資料從輸入到資料庫的完整路徑：
 
 ```
-1. User Action → [Function/API]
+1. 使用者動作 → [函式/API]
            ↓
-2. Frontend Processing → [JS Function]
+2. 前端處理 → [JS 函式]
            ↓
-3. Backend API → [Controller/Action]
+3. 後端 API → [Controller/Action]
            ↓
-4. Database Write → [Table(s)]
+4. 資料庫寫入 → [資料表]
 ```
 
 ### 3.2 程式碼調查
 
 對資料流中的每個步驟：
 
-1. **Search for key variables** (使用專業工具):
+1. **搜尋關鍵變數** (使用專業工具):
    ```bash
    # 使用 ripgrep (推薦)
    rg "<variable_name>" --type php --type js
@@ -150,9 +159,9 @@ SELECT * FROM [log_table] WHERE [reference] = '[sample_id]';
    ```
 
 2. **追蹤資料來源**：
-   - 哪個 function 計算或提供此值？
+   - 哪個函式計算或提供此值？
    - 資料如何從前端傳遞到後端？
-   - 使用 `analyze-function-calls.sh` 分析 function 呼叫關係
+   - 使用 `analyze-function-calls.sh` 分析函式呼叫關係
 
 3. **識別分歧點**：
    - 預期與實際行為在哪裡分歧？
@@ -164,65 +173,84 @@ SELECT * FROM [log_table] WHERE [reference] = '[sample_id]';
 更新 `docs/knowledge/[feature-name]/investigation.md`：
 
 ```markdown
-## Root Cause Analysis
+## 根因分析
 
-### Data Flow
-[Diagram or step-by-step flow]
+### 資料流
+[流程圖或逐步說明]
 
-### Problem Location
-- **File**: [file path]
-- **Line**: [line number]
-- **Issue**: [description]
+### 問題位置
+- **檔案**： [檔案路徑]
+- **行號**： [行號]
+- **問題**： [問題描述]
 
-### Why It Happens
-[Explanation of the condition that triggers the bug]
+### 發生原因
+[觸發問題的條件與原因說明]
 ```
 
 ---
 
-## Phase 4: Solution Proposal
+## Phase 4: 修正方案設計
 
-### 4.1 設計解決方案選項
+### 4.1 建立修正方案文件（必做）
 
-提出 2-3 個解決方案：
+在 `docs/knowledge/[feature-name]/solution-proposal.md` 記錄修正方案與判斷依據：
 
-| Option | Description | Pros | Cons |
-|--------|-------------|------|------|
-| A | [Frontend fix] | [...] | [...] |
-| B | [Backend fix] | [...] | [...] |
-| C | [Combined fix] | [...] | [...] |
+```markdown
+# [問題標題] 修正方案
 
-### 4.2 推薦解決方案
+## 方案選項
+| 方案 | 描述 | 優點 | 風險/缺點 | 影響範圍 | 測試需求 |
+|------|------|------|-----------|----------|----------|
+| A | [前端修正] | [...] | [...] | [...] | [...] |
+| B | [後端修正] | [...] | [...] | [...] | [...] |
+| C | [前後端整合] | [...] | [...] | [...] | [...] |
+
+## 判斷依據
+- [引用 Phase 2/3 的證據與限制]
+- [風險、成本、效益、時間與可回滾性]
+
+## 推薦方案
+- [建議方案與理由]
+
+## 後續行動
+- [實作步驟 / 測試 / 佈署與回滾]
+```
+
+### 4.2 設計解決方案選項
+
+提出 2-3 個解決方案，並回填到 `solution-proposal.md`。
+
+### 4.3 推薦解決方案
 
 向使用者呈現建議：
 - 推薦哪個選項？為什麼？
 - 有什麼風險？
 - 需要什麼測試？
 
-### 4.3 建立 OpenSpec Proposal（如適用）
+### 4.4 建立 OpenSpec Proposal（如適用）
 
 如果修復需要正式文件化，先參考 `openspec/AGENTS.md` 的格式與流程：
 
 ```bash
-# Create OpenSpec proposal
+# 建立 OpenSpec proposal
 mkdir -p openspec/changes/[YYYY-MM-DD]-[fix-description]
 ```
 
-Include:
-- `proposal.md` - Problem analysis and solution
-- `tasks.md` - Implementation checklist
-- `specs/[capability]/spec.md` - Specification changes
+包含：
+- `proposal.md` - 問題分析與解決方案
+- `tasks.md` - 實作檢查清單
+- `specs/[capability]/spec.md` - 規格變更
 
 ---
 
-## Phase 5: Knowledge Documentation
+## Phase 5: 知識文件化
 
 ### 5.1 檢查現有知識庫
 
 在深入研究程式碼之前，檢查是否已有相關文件：
 
 ```bash
-# Search knowledge base for related feature
+# 搜尋知識庫是否已有相關文件
 ls docs/knowledge/
 ```
 
@@ -234,54 +262,52 @@ ls docs/knowledge/
 mkdir -p docs/knowledge/[feature-name]
 ```
 
-Create the following files:
+建立以下文件：
 
 #### `data-flow.md`
 ```markdown
-# [Feature Name] - Data Flow
+# [功能名稱] - 資料流
 
-## Overview
-[Brief description of the feature]
+## 概述
+[功能簡述]
 
-## Data Flow Diagram
-```
-User Action → [Frontend Function] → [Backend API] → [Database Tables]
-```
+## 資料流圖
+使用者動作 → [前端函式] → [後端 API] → [資料表]
 
-## Key Variables
-| Variable | Location | Purpose |
-|----------|----------|---------|
-| `[var]` | [file:line] | [description] |
+## 關鍵變數
+| 變數 | 位置 | 用途 |
+|------|------|------|
+| `[var]` | [file:line] | [用途說明] |
 ```
 
 #### `key-functions.md`
 ```markdown
-# [Feature Name] - Key Functions
+# [功能名稱] - 關鍵函數
 
-## Frontend (JavaScript)
-| Function | File | Description |
-|----------|------|-------------|
-| `[func]()` | [file:line] | [what it does] |
+## 前端 (JavaScript)
+| 函數 | 檔案 | 說明 |
+|------|------|------|
+| `[func]()` | [file:line] | [功能說明] |
 
-## Backend (PHP)
-| Function | File | Description |
-|----------|------|-------------|
-| `[func]()` | [file:line] | [what it does] |
+## 後端 (PHP)
+| 函數 | 檔案 | 說明 |
+|------|------|------|
+| `[func]()` | [file:line] | [功能說明] |
 ```
 
 #### `related-tables.md`
 ```markdown
-# [Feature Name] - Database Tables
+# [功能名稱] - 資料表
 
-## Primary Tables
-| Table | Key Field | Purpose |
-|-------|-----------|---------|
-| `[table]` | `[pk]` | [description] |
+## 主要資料表
+| 資料表 | 主鍵欄位 | 用途 |
+|--------|----------|------|
+| `[table]` | `[pk]` | [用途說明] |
 
-## Log Tables
-| Table | Key Field | Purpose |
-|-------|-----------|---------|
-| `[table]` | `[pk]` | [description] |
+## 紀錄表
+| 資料表 | 主鍵欄位 | 用途 |
+|--------|----------|------|
+| `[table]` | `[pk]` | [用途說明] |
 ```
 
 ### 5.3 更新檢查清單
@@ -289,12 +315,13 @@ User Action → [Frontend Function] → [Backend API] → [Database Tables]
 將 Phase 5 加入調查檢查清單：
 
 ```markdown
-### Phase 5: Knowledge Documentation
-- [ ] Checked existing knowledge base
-- [ ] Created/updated feature knowledge documents
-- [ ] Documented data flow
-- [ ] Listed key functions with file locations
-- [ ] Recorded related database tables
+### Phase 5: 知識文件化
+- [ ] 已檢查現有知識庫
+- [ ] 已建立/更新功能知識文件
+- [ ] 已記錄資料流向
+- [ ] 已列出關鍵函數與檔案位置
+- [ ] 已記錄相關資料表
+- [ ] 已確認 solution-proposal.md 完整
 ```
 
 ---
@@ -308,6 +335,7 @@ User Action → [Frontend Function] → [Backend API] → [Database Tables]
 - **記錄一切** - 保留調查軌跡
 
 ### 溝通方式
+- **全程正體中文** - 所有輸出與文件維持正體中文
 - **游進式報告** - 不要等到最後才報告
 - **提出澄清問題** - 與使用者驗證假設
 - **解釋推理** - 幫助使用者理解分析
@@ -322,35 +350,38 @@ User Action → [Frontend Function] → [Backend API] → [Database Tables]
 ## 檢查清單總結
 
 ```markdown
-## Investigation Checklist
+## 調查檢查清單
 
-### Phase 1: Problem Discovery
+### Phase 1: 問題釐清
 - [ ] 理解預期與實際行為
 - [ ] 獲取樣本資料 (ID、時間戳記)
 - [ ] 建立調查文件
+- [ ] 記錄阻礙與缺口（如有）
 
-### Phase 2: Evidence Gathering
+### Phase 2: 證據蒐集
 - [ ] 執行資料庫驗證查詢
 - [ ] 記錄資料表/欄位的差異
 - [ ] 識別資料矛盾
 
-### Phase 3: Root Cause Analysis
+### Phase 3: 根因分析
 - [ ] 描繪完整資料流向
 - [ ] 搜尋關鍵變數 (使用 ripgrep/scripts)
 - [ ] 識別分歧點/問題程式碼
 - [ ] 記錄根本原因
 
-### Phase 4: Solution Proposal
+### Phase 4: 修正方案設計
+- [ ] 建立 solution-proposal.md
 - [ ] 提出 2-3 個解決方案選項
 - [ ] 向使用者呈現建議
 - [ ] 實作同意的解決方案
 - [ ] 建立 OpenSpec proposal (如適用)
 - [ ] 透過測試驗證修復
 
-### Phase 5: Knowledge Documentation
+### Phase 5: 知識文件化
 - [ ] 檢查現有知識庫
 - [ ] 建立/更新功能知識文件
 - [ ] 記錄資料流向 (data-flow.md)
 - [ ] 列出關鍵 function 及檔案位置 (key-functions.md)
 - [ ] 記錄相關資料表 (related-tables.md)
+- [ ] 確認 solution-proposal.md 完整
 ```
