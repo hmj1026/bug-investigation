@@ -204,19 +204,24 @@ docs/knowledge/
 - [ ] 需要完整測試流程時使用 `test-driven-development` 技能
 - [ ] 若是 flaky/timeout，改用 `references/condition-based-waiting.md` 的條件等待
 
-### 4.5 建立 OpenSpec Proposal（如適用）
+### 4.5 建立 OpenSpec（強制，無例外）
 
-如果修復需要正式文件化，先參考 `openspec/AGENTS.md` 的格式與流程：
+Phase 4 完成後**必須**進入 OpenSpec 流程，不得跳過：
 
 ```bash
-# 建立 OpenSpec proposal
-mkdir -p openspec/changes/[YYYY-MM-DD]-[fix-description]
+/opsx:new   # 依推薦方案命名 change（kebab-case）
 ```
 
-包含：
-- `proposal.md` - 問題分析與解決方案
+依序建立所有 artifacts：
+- `proposal.md` - 根因摘要 + 推薦方案
+- `design.md` - 技術決策與架構
+- `specs/[capability]/spec.md` - 行為規格
 - `tasks.md` - 實作檢查清單
-- `specs/[capability]/spec.md` - 規格變更
+
+建立完成後執行 `/opsx:apply` 按 TDD 實作。
+
+> **鐵律：** bug-investigation 觸發 → 調查完成 → 必接 OpenSpec → 再實作。
+> 不允許從 Phase 4 直接跳到程式碼修改。
 
 ### 4.6 修復連續失敗時的停損
 
